@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -19,16 +20,27 @@ Todo
 - Get the http body and the filename from the head
 - Don't print url if status != 200ok
 - Separate code in functions
+- Download Folder?
 */
 
 func main() {
 	//set the flags
-	sharedUrl := flag.String("url", "", "The OneDrive Share `link`.")
+	onlyURL := flag.Bool("nodownload", false, "Optional: generate only the download link.")
 	outfile := flag.String("o", "", "Set the output `filename`. E.g. video.mkv.")
+	sharedUrl := flag.String("url", "", "The OneDrive Share `link`.")
 	flag.Parse()
 
 	//if no flags set throw an error
-	if *sharedUrl == "" || *outfile == "" {
+	if !*onlyURL {
+		if *sharedUrl == "" || *outfile == "" {
+			flag.Usage()
+			os.Exit(0)
+		}
+	} else if *onlyURL && *sharedUrl != "" {
+		printBanner()
+		fmt.Printf("[-] Full link: %s\n", linkFormatter(sharedUrl))
+		return
+	} else {
 		flag.Usage()
 		os.Exit(0)
 	}
@@ -37,6 +49,25 @@ func main() {
 
 	//format the shared OneDrive Url
 	url := linkFormatter(sharedUrl)
+	//url := *sharedUrl
+
+	//Print the full link
+	fmt.Printf("[-] Full link: %s\n", url)
+
+	//HTTP GET
+	//GET THE CONTENT
+	resp, err := http.Get(url)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer resp.Body.Close()
+
+	//check if 200 OK
+	if resp.StatusCode != http.StatusOK {
+		fmt.Printf("Could not get the file, status: %s\n", resp.Status)
+		return
+	}
 
 	//create the outfile
 	out, err := os.Create(*outfile)
@@ -46,35 +77,15 @@ func main() {
 	}
 	defer out.Close()
 
-	//HTTP GET
+	//COPY THE CONTENT OF THE GET INTO THE FILE
 
-	//GET THE HTTP HEADER
-	headResp, err := http.Head(url)
-	if err != nil {
-		panic(err)
-	}
-	if headResp.StatusCode != 200 {
-		panic("stop")
-	}
-
-	//GET THE CONTENT
-	resp, err := http.Get(url)
+	size, err := io.Copy(out, resp.Body)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	defer resp.Body.Close()
 
-	//Print the full link
-	fmt.Printf("[-] Full link: %s\n", url)
-
-	//COPY THE CONTENT OF THE GET INTO THE FILE
-
-	// size, err = io.Copy(out, resp.Body)
-	// if err != nil {
-	// 	fmt.Println(err)
-	// 	return
-	// }
+	fmt.Println(size)
 
 	fmt.Println()
 }

@@ -10,7 +10,7 @@ You need Go installed to compile the code `go build main.go`
 ## How to use
 
 1. Create a shared url from you onedrive account.
-2. `./onedownload -u "https://1drv.ms/x/s\!ABCDEFG1234"` (escape the `!` with `\`).
+2. `./onedownload -url 'https://1drv.ms/x/s!ABCDEFG1234'` (escape the `!` with `\` if you use double quotes).
 3. Wait for it...
 
 ## Future improvements
